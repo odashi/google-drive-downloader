@@ -115,4 +115,4 @@ if __name__ == "__main__":
     )
     args = p.parse_args()
 
-    recurse(Downloader(args.token), args.dest, args.src_drive, args.src_id)
+    recurse(Downloader(args.token, args.secret), args.dest, args.src_drive, args.src_id)
