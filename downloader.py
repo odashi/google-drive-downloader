@@ -2,6 +2,7 @@ import argparse
 import io
 import logging
 import pathlib
+from typing import Optional
 
 import googleapiclient.discovery
 import googleapiclient.errors
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class Downloader:
-    def __init__(self, token_path: str, secret_path: str | None = None) -> None:
+    def __init__(self, token_path: str, secret_path: Optional[str] = None) -> None:
         store = oauth2client.file.Storage(token_path)
         creds = store.get()
 
@@ -48,7 +49,7 @@ class Downloader:
 
         return data.getvalue()
 
-    def list_files(self, parent_id: str) -> dict[str, str]:
+    def list_files(self, drive_id: str, parent_id: str) -> dict[str, str]:
         files = []
         page_token = None
 
@@ -57,6 +58,7 @@ class Downloader:
                 self._drive_service.files()
                 .list(
                     corpora="drive",
+                    driveId=drive_id,
                     q=f"'{parent_id}' in parents",
                     fields="nextPageToken, files(id, name, mimeType)",
                     includeItemsFromAllDrives=True,
@@ -77,10 +79,10 @@ class Downloader:
         return sorted(files, key=lambda x: x["name"])
 
 
-def recurse(dl: Downloader, parent_path: pathlib.Path, parent_id: str):
+def recurse(dl: Downloader, parent_path: pathlib.Path, drive_id: str, parent_id: str):
     logging.info(f"Folder: {parent_path}")
 
-    for child_info in dl.list_files(parent_id):
+    for child_info in dl.list_files(drive_id, parent_id):
         child_path = parent_path / child_info["name"]
 
         if child_info["mimeType"] == "application/pdf":
@@ -90,11 +92,12 @@ def recurse(dl: Downloader, parent_path: pathlib.Path, parent_id: str):
             child_path.write_bytes(data)
 
         elif child_info["mimeType"] == "application/vnd.google-apps.folder":
-            recurse(dl, child_path, child_info["id"])
+            recurse(dl, child_path, drive_id, child_info["id"])
 
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser("Copy Google Drive files to local.")
+    p.add_argument("--src-drive", required=True, help="Source drive ID")
     p.add_argument("--src-id", required=True, help="Source folder ID")
     p.add_argument(
         "--dest", type=pathlib.Path, required=True, help="Local destination folder"
@@ -112,4 +115,4 @@ if __name__ == "__main__":
     )
     args = p.parse_args()
 
-    recurse(Downloader(), args.dest, args.src_id)
+    recurse(Downloader(args.token), args.dest, args.src_drive, args.src_id)

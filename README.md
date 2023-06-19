@@ -14,3 +14,14 @@ pip install \
   google-auth-oauthlib \
   oauth2client
 ```
+
+## Usage
+
+```shell
+python downloader.py \
+  --src-drive {DRIVE_ID} \
+  --src-id {FOLDER_ID} \
+  --dest {LOCAL_FOLDER} \
+  --token {OAUTH2_REFRESH_TOKEN_JSON} \
+  [--secret {OAUTH2_CLIENT_SECRET_JSON}]
+```
